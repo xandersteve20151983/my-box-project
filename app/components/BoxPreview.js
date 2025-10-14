@@ -1,7 +1,7 @@
 // app/components/BoxPreview.js
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 
 /* ---------------- helpers ---------------- */
 
@@ -22,14 +22,9 @@ function baseBodyWidth(W, L, glueTab) {
 
 const GLUE_TAB_DEFAULT = 12; // mm, simple baseline
 
-/* ---------------- per-style geometry (stable & simple) ---------------- */
-/**
- * NOTE on simplifications:
- * - These are schematic blanks for fast iteration.
- * - 0200/0201/0202/0203 use distinct flap heights.
- * - 0204/0205/0206 are currently 0201-like placeholders (creases & panel order the same).
- *   When you're ready, give me your exact flap/slot rules and I'll implement them precisely.
- */
+function mm(x) { return Number.isFinite(x) ? x : 0; }
+
+/* ---------------- per-style geometry ---------------- */
 
 function mkModel(name, L, W, H, topFlap, bottomFlap, label) {
   const glueTab = GLUE_TAB_DEFAULT;
@@ -47,40 +42,25 @@ function mkModel(name, L, W, H, topFlap, bottomFlap, label) {
 }
 
 function compute0201(L, W, H) {
-  const flap = Math.round(W / 2); // meet in middle
+  const flap = Math.round(W / 2);
   return mkModel("0201", L, W, H, flap, flap, "RSC: top/bottom flaps ≈ W/2");
 }
-
 function compute0200(L, W, H) {
-  // Half slotted (top open; bottoms like 0201). Common simplification.
-  const topFlap = 0;
-  const bottomFlap = Math.round(W / 2);
+  const topFlap = 0, bottomFlap = Math.round(W / 2);
   return mkModel("0200", L, W, H, topFlap, bottomFlap, "HSC: top flaps = 0, bottom ≈ W/2");
 }
-
 function compute0202(L, W, H) {
-  const flap = Math.round(W * 0.75); // partial overlap
+  const flap = Math.round(W * 0.75);
   return mkModel("0202", L, W, H, flap, flap, "OSC: top/bottom flaps ≈ 0.75·W");
 }
-
 function compute0203(L, W, H) {
-  const flap = W; // full overlap
+  const flap = W;
   return mkModel("0203", L, W, H, flap, flap, "FOL: top/bottom flaps ≈ W (full overlap)");
 }
-
-// Placeholders: use 0201 geometry for now (creases & layout okay, flap scheme TBD)
-function compute0204(L, W, H) {
-  const m = compute0201(L, W, H);
-  return { ...m, name: "0204", label: "0204: schematic placeholder (0201-like flaps)" };
-}
-function compute0205(L, W, H) {
-  const m = compute0201(L, W, H);
-  return { ...m, name: "0205", label: "0205: schematic placeholder (0201-like flaps)" };
-}
-function compute0206(L, W, H) {
-  const m = compute0201(L, W, H);
-  return { ...m, name: "0206", label: "0206: schematic placeholder (0201-like flaps)" };
-}
+// placeholders (0201-like) – refine later with your exact rules
+function compute0204(L, W, H) { const m = compute0201(L, W, H); return { ...m, name:"0204", label:"0204: schematic placeholder (0201-like flaps)" }; }
+function compute0205(L, W, H) { const m = compute0201(L, W, H); return { ...m, name:"0205", label:"0205: schematic placeholder (0201-like flaps)" }; }
+function compute0206(L, W, H) { const m = compute0201(L, W, H); return { ...m, name:"0206", label:"0206: schematic placeholder (0201-like flaps)" }; }
 
 function computeModel(style, L, W, H) {
   switch (style) {
@@ -95,6 +75,63 @@ function computeModel(style, L, W, H) {
   }
 }
 
+/* ---------------- dimension helpers (SVG) ---------------- */
+
+function DimX({ x1, x2, y, label }) {
+  // horizontal dimension with ticks
+  const t = 3; // tick size
+  return (
+    <g fontSize="6" fill="#333" stroke="#333" strokeWidth="0.4">
+      <line x1={x1} y1={y} x2={x2} y2={y} />
+      <line x1={x1} y1={y - t} x2={x1} y2={y + t} />
+      <line x1={x2} y1={y - t} x2={x2} y2={y + t} />
+      <text x={(x1 + x2) / 2} y={y - 2} textAnchor="middle">{label}</text>
+    </g>
+  );
+}
+
+function DimY({ y1, y2, x, label }) {
+  // vertical dimension with ticks
+  const t = 3;
+  return (
+    <g fontSize="6" fill="#333" stroke="#333" strokeWidth="0.4">
+      <line x1={x} y1={y1} x2={x} y2={y2} />
+      <line x1={x - t} y1={y1} x2={x + t} y2={y1} />
+      <line x1={x - t} y1={y2} x2={x + t} y2={y2} />
+      <text x={x + 2} y={(y1 + y2) / 2} writingMode="tb">{label}</text>
+    </g>
+  );
+}
+
+/* ---------------- export (SVG->PNG) ---------------- */
+
+async function svgToPng(svgEl, filename = "box-blank.png") {
+  const serializer = new XMLSerializer();
+  const src = serializer.serializeToString(svgEl);
+  const svgBlob = new Blob([src], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
+
+  const img = new Image();
+  img.src = url;
+
+  await new Promise((res) => { img.onload = res; });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+
+  canvas.toBlob((blob) => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    URL.revokeObjectURL(url);
+  });
+}
+
 /* ---------------- main component ---------------- */
 
 export default function BoxPreview({ initial, style }) {
@@ -102,7 +139,7 @@ export default function BoxPreview({ initial, style }) {
     L: initial?.L ?? 267,
     W: initial?.W ?? 120,
     H: initial?.H ?? 80,
-    t: initial?.t ?? 3,     // not used in schematic math yet
+    t: initial?.t ?? 3,     // not used yet
     style: initial?.style ?? "0201",
   }));
 
@@ -112,13 +149,30 @@ export default function BoxPreview({ initial, style }) {
   }, [style]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const model = useMemo(
-    () => computeModel(dims.style, dims.L, dims.W, dims.H),
+    () => computeModel(dims.style, mm(dims.L), mm(dims.W), mm(dims.H)),
     [dims.style, dims.L, dims.W, dims.H]
   );
 
   const vb = useMemo(() => ViewboxFor(model.bodyWidth, model.totalHeight), [model]);
   const scaleX = 900 / vb.width; // try to fit ~900px width
   const heightPx = Math.round(vb.height * scaleX);
+
+  const svgRef = useRef(null);
+
+  // Precompute vertical panel X positions for dim labels
+  const panelX = useMemo(() => {
+    const xs = [0];
+    let x = 0;
+    for (const w of model.panels) { x += w; xs.push(x); }
+    return xs; // length 6 (start..end)
+  }, [model]);
+
+  const {
+    topFlap, body, bottomFlap
+  } = model.panelHeights;
+
+  const bodyTopY = bottomFlap;
+  const bodyBotY = bottomFlap + body;
 
   return (
     <div>
@@ -153,14 +207,28 @@ export default function BoxPreview({ initial, style }) {
             />
           </label>
         ))}
+
+        <button
+          className="ml-auto px-3 py-1 border rounded hover:bg-gray-50"
+          onClick={() => svgToPng(svgRef.current)}
+          title="Export current drawing to PNG"
+        >
+          Download PNG
+        </button>
       </div>
 
       {/* Renderer */}
       <div className="rounded border bg-white overflow-auto">
-        <svg width="100%" height={heightPx} viewBox={`0 0 ${vb.width} ${vb.height}`}>
+        <svg
+          ref={svgRef}
+          width="100%"
+          height={heightPx}
+          viewBox={`0 0 ${vb.width} ${vb.height}`}
+        >
           {/* sheet outline */}
           <rect x="0" y="0" width={vb.width} height={vb.height} fill="#fff" stroke="#eee" />
           <g transform={`translate(${vb.originX}, ${vb.originY})`}>
+
             {/* body rectangle */}
             <rect
               x="0" y="0"
@@ -174,18 +242,18 @@ export default function BoxPreview({ initial, style }) {
             {/* horizontal creases */}
             <line
               x1="0"
-              y1={model.panelHeights.bottomFlap}
+              y1={bottomFlap}
               x2={model.bodyWidth}
-              y2={model.panelHeights.bottomFlap}
+              y2={bottomFlap}
               stroke="#666"
               strokeDasharray="4 4"
               strokeWidth="0.6"
             />
             <line
               x1="0"
-              y1={model.panelHeights.bottomFlap + model.panelHeights.body}
+              y1={bodyBotY}
               x2={model.bodyWidth}
-              y2={model.panelHeights.bottomFlap + model.panelHeights.body}
+              y2={bodyBotY}
               stroke="#666"
               strokeDasharray="4 4"
               strokeWidth="0.6"
@@ -199,13 +267,8 @@ export default function BoxPreview({ initial, style }) {
                 lines.push(
                   <line
                     key={`v-${i}`}
-                    x1={x}
-                    y1="0"
-                    x2={x}
-                    y2={model.totalHeight}
-                    stroke="#666"
-                    strokeDasharray="4 4"
-                    strokeWidth="0.6"
+                    x1={x} y1="0" x2={x} y2={model.totalHeight}
+                    stroke="#666" strokeDasharray="4 4" strokeWidth="0.6"
                   />
                 );
                 x += model.panels[i];
@@ -220,6 +283,36 @@ export default function BoxPreview({ initial, style }) {
             <text x="6" y={model.totalHeight + 10} fontSize="6" fill="#333">
               {model.label}{model.name >= "0204" ? "  •  *schematic*" : ""}
             </text>
+
+            {/* --- dimension annotations --- */}
+            {/* overall width */}
+            <DimX x1={0} x2={model.bodyWidth} y={-12} label={`FF width ${model.bodyWidth} mm`} />
+
+            {/* overall height */}
+            <DimY x={-12} y1={0} y2={model.totalHeight} label={`FF height ${model.totalHeight} mm`} />
+
+            {/* panel widths: glue, W, L, W, L */}
+            {model.panels.map((pw, i) => {
+              const x1 = panelX[i];
+              const x2 = panelX[i+1];
+              const title =
+                i === 0 ? `Glue ${pw} mm`
+                : i === 1 || i === 3 ? `W ${pw} mm`
+                : `L ${pw} mm`;
+              return (
+                <DimX key={`pdim-${i}`} x1={x1} x2={x2} y={model.totalHeight + 14 + (i%2)*7} label={title} />
+              );
+            })}
+
+            {/* flap heights (bottom & top) */}
+            {bottomFlap > 0 && (
+              <DimY x={model.bodyWidth + 12} y1={0} y2={bottomFlap} label={`Bottom flap ${bottomFlap} mm`} />
+            )}
+            {topFlap > 0 && (
+              <DimY x={model.bodyWidth + 12} y1={bodyBotY} y2={model.totalHeight} label={`Top flap ${topFlap} mm`} />
+            )}
+            {/* body height */}
+            <DimY x={model.bodyWidth + 24} y1={bodyTopY} y2={bodyBotY} label={`Body ${body} mm`} />
           </g>
         </svg>
       </div>

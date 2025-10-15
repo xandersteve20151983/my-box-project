@@ -2,9 +2,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import BoxPreview2D from "@/components/BoxPreview2D";
-import ControlsPanel from "@/components/ControlsPanel";
-import ExpandableSection from "@/components/ExpandableSection";
+// Use RELATIVE imports to avoid alias issues
+import BoxPreview2D from "../components/BoxPreview2D";
+import ControlsPanel from "../components/ControlsPanel";
+import ExpandableSection from "../components/ExpandableSection";
 
 export default function Page() {
   const [inputs, setInputs] = useState({

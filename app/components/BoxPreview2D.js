@@ -10,6 +10,8 @@ export default function BoxPreview2D({ inputs, derived }) {
     showDimLines,
     showFlapLabels,
     glueLapBevelAngle, // visual only
+    glueLapExtensionA, // used ONLY on glue-lap flaps
+    glueLapWidth,      // for bevel extent
   } = inputs;
 
   const {
@@ -43,48 +45,47 @@ export default function BoxPreview2D({ inputs, derived }) {
   const originY = padding + maxTop; // y of upper score line
 
   // ---------- helpers ----------
-  // Glue-lap flap path with bevel + “a” nib (nib extends OUTWARD to the right)
+  // Glue-lap flap path with bevel + “a” nib (nib extends ALONG the flap: vertical)
   const makeFlapPath = (x0, width, height, isTop) => {
-    const { glueLapWidth, glueLapExtensionA } = inputs;
-
     const yBase = isTop ? originY : originY + bh;
-    const dir = isTop ? -1 : +1;
-    const flapY = yBase + dir * height;
+    const dir = isTop ? -1 : +1;        // up for top, down for bottom
+    const flapTipY = yBase + dir * height;
 
-    // Detect glue-lap by x-position (more reliable than width equality)
+    // Detect glue-lap by x-position (leftmost column)
     const isGlueLap = x0 === (padding + xGlue);
 
-    // Bevel run along X for the glue-lap flap edge (visual only)
+    // Bevel run along X for the glue-lap flap free edge (visual only)
     const bevelX = isGlueLap
       ? Math.tan((glueLapBevelAngle * Math.PI) / 180) * Math.min(height, glueLapWidth)
       : 0;
 
-    // Base rectangle corners
+    // Base rectangle far X (score-to-free edge across the panel width)
     const x1 = x0;
     const x2 = x0 + width;
-    const y1 = yBase;
-    const y2 = flapY;
 
-    // Beveled far edge
+    // Beveled free-edge X
     const x2b = isGlueLap && bevelX !== 0 ? (isTop ? x2 - bevelX : x2 + bevelX) : x2;
 
-    // “a” nib belongs ONLY on glue-lap FLAPS and should extend the free edge OUTWARD (to the right)
+    // “a” extension goes ALONG the flap (vertical), beyond the tip
     const a = isGlueLap ? Math.max(0, glueLapExtensionA) : 0;
+    const flapTipYWithA = flapTipY + dir * a;
 
-    if (a === 0) {
-      return `M ${x1},${y1} L ${x2},${y1} L ${x2b},${y2} L ${x1},${y2} Z`;
+    // Polygon: base edge → free edge → beveled tip (at flapTipY) → extended tip (at flapTipYWithA) → back
+    if (a > 0) {
+      return [
+        `M ${x1},${yBase}`,
+        `L ${x2},${yBase}`,
+        `L ${x2b},${flapTipY}`,
+        `L ${x1},${flapTipY}`,
+        `L ${x1},${flapTipYWithA}`,
+        `L ${x2b},${flapTipYWithA}`,
+        `L ${x2b},${flapTipY}`,       // small return to keep outline clean
+        "Z",
+      ].join(" ");
     }
 
-    const x2e = x2b + a; // nib tip to the right for both top & bottom
-
-    return [
-      `M ${x1},${y1}`,
-      `L ${x2},${y1}`,
-      `L ${x2b},${y2}`,
-      `L ${x2e},${y2}`,
-      `L ${x1},${y2}`,
-      "Z",
-    ].join(" ");
+    // No extension: simple quad with optional bevel
+    return `M ${x1},${yBase} L ${x2},${yBase} L ${x2b},${flapTipY} L ${x1},${flapTipY} Z`;
   };
 
   const DimLine = ({ x1, y1, x2, y2, label, offset = 10 }) => {
@@ -101,12 +102,44 @@ export default function BoxPreview2D({ inputs, derived }) {
     );
   };
 
+  // Render slot markers AFTER flaps so they’re visible on top.
+  // We draw a small “gap” of exact slotWidth at each score, extending a fixed 12 mm into each flap.
+  const SlotMarkers = () => {
+    if (!(slotWidth > 0)) return null;
+    const notchDepth = 12; // mm shown into flaps (visual hint)
+
+    return (
+      <>
+        {vScores.map((x, i) => {
+          const sx = padding + x;
+          // Top notch: a “gap” centered on the score line
+          return (
+            <g key={`slot-${i}`}>
+              {/* top gap */}
+              <line x1={sx} y1={originY - notchDepth} x2={sx} y2={originY - (slotWidth / 2)} stroke="#444" />
+              <line x1={sx} y1={originY - (slotWidth / 2)} x2={sx} y2={originY - 0.01} stroke="transparent" />
+              <line x1={sx} y1={originY - 0.01} x2={sx} y2={originY} stroke="#444" />
+
+              {/* bottom gap */}
+              <line x1={sx} y1={originY + bh} x2={sx} y2={originY + bh + 0.01} stroke="#444" />
+              <line x1={sx} y1={originY + bh + 0.01} x2={sx} y2={originY + bh + (slotWidth / 2)} stroke="transparent" />
+              <line x1={sx} y1={originY + bh + (slotWidth / 2)} x2={sx} y2={originY + bh + notchDepth} stroke="#444" />
+            </g>
+          );
+        })}
+      </>
+    );
+  };
+
   // ---------- render ----------
   return (
     <div className="w-full overflow-auto border rounded-xl p-2 bg-white">
       <svg viewBox={viewBox} className="w-full h-[520px]" role="img" aria-label="2D RSC Blank">
         {/* Background */}
         <rect x="0" y="0" width={bw + padding * 2} height={totalH + padding * 2} fill="#fafafa" />
+
+        {/* MAIN BLANK (score-to-score) */}
+        <rect x={padding + xGlue} y={originY} width={bw} height={bh} fill="#fff" stroke="#333" />
 
         {/* TOP FLAPS */}
         <path d={makeFlapPath(padding + xGlue, glueLap, top.P1, true)} fill="#fff" stroke="#999" />
@@ -115,49 +148,28 @@ export default function BoxPreview2D({ inputs, derived }) {
         <path d={makeFlapPath(padding + xP3,  P3,     top.P3, true)} fill="#fff" stroke="#999" />
         <path d={makeFlapPath(padding + xP4,  P4,     top.P4, true)} fill="#fff" stroke="#999" />
 
-        {/* MAIN BLANK (score-to-score) */}
-        <rect x={padding + xGlue} y={originY} width={bw} height={bh} fill="#fff" stroke="#333" />
-
-        {/* Vertical scores + slot markers */}
-        {vScores.map((x, i) => (
-          <g key={i}>
-            <line
-              x1={padding + x}
-              y1={originY}
-              x2={padding + x}
-              y2={originY + bh}
-              stroke="#777"
-              strokeDasharray="6 6"
-            />
-            {slotWidth > 0 && (
-              <>
-                <line
-                  x1={padding + x}
-                  y1={originY - Math.min(12, slotWidth)}
-                  x2={padding + x}
-                  y2={originY}
-                  stroke="#444"
-                />
-                <line
-                  x1={padding + x}
-                  y1={originY + bh}
-                  x2={padding + x}
-                  y2={originY + bh + Math.min(12, slotWidth)}
-                  stroke="#444"
-                />
-              </>
-            )}
-          </g>
-        ))}
-        {/* Glue-lap left edge */}
-        <line x1={padding + xGlue} y1={originY} x2={padding + xGlue} y2={originY + bh} stroke="#444" />
-
         {/* BOTTOM FLAPS */}
         <path d={makeFlapPath(padding + xGlue, glueLap, bottom.P1, false)} fill="#fff" stroke="#999" />
         <path d={makeFlapPath(padding + xP1,  P1,     bottom.P1, false)} fill="#fff" stroke="#999" />
         <path d={makeFlapPath(padding + xP2,  P2,     bottom.P2, false)} fill="#fff" stroke="#999" />
         <path d={makeFlapPath(padding + xP3,  P3,     bottom.P3, false)} fill="#fff" stroke="#999" />
         <path d={makeFlapPath(padding + xP4,  P4,     bottom.P4, false)} fill="#fff" stroke="#999" />
+
+        {/* Vertical scores (on top so they’re visible) */}
+        {vScores.map((x, i) => (
+          <line
+            key={`score-${i}`}
+            x1={padding + x}
+            y1={originY}
+            x2={padding + x}
+            y2={originY + bh}
+            stroke="#777"
+            strokeDasharray="6 6"
+          />
+        ))}
+
+        {/* Slot “gaps” drawn last so they sit above flaps */}
+        <SlotMarkers />
 
         {/* Panel labels */}
         {showPanelLabels && (

@@ -1,85 +1,119 @@
-// components/ControlsPanel.js
+// app/components/ControlsPanel.js
 "use client";
 
 export default function ControlsPanel({ inputs, setInputs }) {
-  const number = (key) => ({
-    value: inputs[key],
-    onChange: (e) => setInputs(prev => ({ ...prev, [key]: +e.target.value })),
-    step: "any",
-  });
-
-  const bool = (key) => ({
-    checked: inputs[key],
-    onChange: (e) => setInputs(prev => ({ ...prev, [key]: e.target.checked })),
-  });
+  const onNum = (key) => (e) => setInputs(v => ({ ...v, [key]: num(e.target.value) }));
+  const onStr = (key) => (e) => setInputs(v => ({ ...v, [key]: e.target.value }));
+  const onBool = (key) => (e) => setInputs(v => ({ ...v, [key]: e.target.checked }));
 
   return (
-    <div className="space-y-4">
-      <div className="border rounded-2xl p-4 shadow-sm">
-        <h3 className="font-semibold mb-3">Internal Dimensions (mm)</h3>
-        <div className="grid grid-cols-3 gap-3">
-          <LabeledInput label="L" {...number("L")} />
-          <LabeledInput label="W" {...number("W")} />
-          <LabeledInput label="D" {...number("D")} />
-        </div>
-      </div>
+    <div className="border rounded-xl p-4 bg-white space-y-6">
+      {/* Internal dims */}
+      <Section title="Internal Dimensions (mm)">
+        <Row>
+          <Num label="L" value={inputs.L} onChange={onNum("L")} />
+          <Num label="W" value={inputs.W} onChange={onNum("W")} />
+          <Num label="D" value={inputs.D} onChange={onNum("D")} />
+        </Row>
+      </Section>
 
-      <div className="border rounded-2xl p-4 shadow-sm">
-        <h3 className="font-semibold mb-3">Allowances & Material</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <LabeledInput label="Flute thickness" {...number("fluteThickness")} />
-          <LabeledInput label="Flap allowance" {...number("flapAllowance")} />
-          <LabeledInput label="Panel allowance P1" {...number("p1")} />
-          <LabeledInput label="Panel allowance P2" {...number("p2")} />
-          <LabeledInput label="Panel allowance P3" {...number("p3")} />
-          <LabeledInput label="Panel allowance P4" {...number("p4")} />
-          <LabeledInput label="Flap gap (inner)" {...number("flapGapInner")} />
-          <LabeledInput label="Flap gap (outer)" {...number("flapGapOuter")} />
-        </div>
-      </div>
+      {/* Allowances */}
+      <Section title="Allowances & Material">
+        <Row>
+          <Num label="Flute thickness" value={inputs.fluteThickness} onChange={onNum("fluteThickness")} />
+          <Num label="Flap allowance" value={inputs.flapAllowance} onChange={onNum("flapAllowance")} />
+        </Row>
+        <Row>
+          <Num label="Panel allowance P1" value={inputs.p1} onChange={onNum("p1")} />
+          <Num label="Panel allowance P2" value={inputs.p2} onChange={onNum("p2")} />
+        </Row>
+        <Row>
+          <Num label="Panel allowance P3" value={inputs.p3} onChange={onNum("p3")} />
+          <Num label="Panel allowance P4" value={inputs.p4} onChange={onNum("p4")} />
+        </Row>
+        <Row>
+          <Num label="Flap gap (inner)" value={inputs.flapGapInner} onChange={onNum("flapGapInner")} />
+          <Num label="Flap gap (outer)" value={inputs.flapGapOuter} onChange={onNum("flapGapOuter")} />
+        </Row>
+      </Section>
 
-      <div className="border rounded-2xl p-4 shadow-sm">
-        <h3 className="font-semibold mb-3">Glue-lap Geometry</h3>
-        <div className="grid grid-cols-3 gap-3">
-          <LabeledInput label="Glue-lap width" {...number("glueLapWidth")} />
-          <LabeledInput label="Extension a" {...number("glueLapExtensionA")} />
-          <LabeledInput label="Bevel angle (°)" {...number("glueLapBevelAngle")} />
-        </div>
-      </div>
+      {/* Glue-lap */}
+      <Section title="Glue-lap Geometry">
+        <Row>
+          <Num label="Glue-lap width" value={inputs.glueLapWidth} onChange={onNum("glueLapWidth")} />
+          <Num label="Extension a" value={inputs.glueLapExtensionA} onChange={onNum("glueLapExtensionA")} />
+          <Num label="Bevel angle (°)" value={inputs.glueLapBevelAngle} onChange={onNum("glueLapBevelAngle")} />
+        </Row>
+        <Row>
+          <Select label="Glue position" value={inputs.gluePosition} onChange={onStr("gluePosition")}
+                  options={[["inside","Inside glue"],["outside","Outside glue"]]} />
+          <Select label="Glue lap off" value={inputs.glueLapOff} onChange={onStr("glueLapOff")}
+                  options={[["small","Small panel (W)"],["large","Large panel (L)"]]} />
+        </Row>
+      </Section>
 
-      <div className="border rounded-2xl p-4 shadow-sm">
-        <h3 className="font-semibold mb-3">Slots & Display</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <LabeledInput label="Slot width" {...number("slotWidth")} />
-          <Toggle label="Show panel labels" {...bool("showPanelLabels")} />
-          <Toggle label="Show dimension lines" {...bool("showDimLines")} />
-          <Toggle label="Show flap labels" {...bool("showFlapLabels")} />
-        </div>
-      </div>
+      {/* Slots & Display */}
+      <Section title="Slots & Display">
+        <Row>
+          <Num label="Slot width" value={inputs.slotWidth} onChange={onNum("slotWidth")} />
+        </Row>
+        <Row>
+          <Chk label="Show panel labels" checked={inputs.showPanelLabels} onChange={onBool("showPanelLabels")} />
+          <Chk label="Show dimension lines" checked={inputs.showDimLines} onChange={onBool("showDimLines")} />
+          <Chk label="Show flap labels" checked={inputs.showFlapLabels} onChange={onBool("showFlapLabels")} />
+        </Row>
+      </Section>
+
+      {/* Style/Flute (placeholders now) */}
+      <Section title="Style & Flute (placeholders)">
+        <Row>
+          <Select label="Parent style" value={inputs.parentStyle} onChange={onStr("parentStyle")}
+                  options={[["0200","0200 — Slotted family"]]} />
+          <Select label="Style" value={inputs.styleCode} onChange={onStr("styleCode")}
+                  options={[["0201","0201"],["0202","0202"],["0203","0203"],["0204","0204"]]} />
+          <Select label="Flute" value={inputs.fluteCode} onChange={onStr("fluteCode")}
+                  options={[["B","B (3 mm)"],["C","C (4 mm)"],["E","E (2 mm)"]]} />
+        </Row>
+      </Section>
     </div>
   );
 }
 
-function LabeledInput({ label, value, onChange, step = "any" }) {
+function Section({ title, children }) {
   return (
-    <label className="text-sm">
-      <div className="mb-1 text-gray-600">{label}</div>
-      <input
-        type="number"
-        step={step}
-        value={value}
-        onChange={onChange}
-        className="w-full rounded-lg border px-2 py-1"
-      />
+    <div className="space-y-2">
+      <div className="font-semibold">{title}</div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+function Row({ children }) {
+  return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{children}</div>;
+}
+function Num({ label, value, onChange }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-sm text-gray-700">{label}</span>
+      <input type="number" className="border rounded-md px-2 py-1" value={value} onChange={onChange} />
     </label>
   );
 }
-
-function Toggle({ label, checked, onChange }) {
+function Select({ label, value, onChange, options }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
+    <label className="flex flex-col gap-1">
+      <span className="text-sm text-gray-700">{label}</span>
+      <select className="border rounded-md px-2 py-1" value={value} onChange={onChange}>
+        {options.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+      </select>
+    </label>
+  );
+}
+function Chk({ label, checked, onChange }) {
+  return (
+    <label className="inline-flex items-center gap-2">
       <input type="checkbox" checked={checked} onChange={onChange} />
-      <span className="text-gray-700">{label}</span>
+      <span>{label}</span>
     </label>
   );
 }
+const num = (x) => (x === "" || isNaN(Number(x))) ? 0 : Number(x);

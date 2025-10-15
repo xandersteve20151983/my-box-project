@@ -39,7 +39,7 @@ export default function Page() {
     const P3 = L + p3;
     const P4 = W + p4;
 
-    const glueLap = glueLapWidth + glueLapExtensionA;
+    const glueLap = glueLapWidth; // “a” does not change panel width
     const blankWidth = glueLap + P1 + P2 + P3 + P4;
 
     const topFlap_P2 = (W / 2) + flapAllowance - (flapGapOuter / 2);

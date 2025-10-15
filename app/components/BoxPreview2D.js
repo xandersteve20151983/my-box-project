@@ -14,7 +14,7 @@ export default function BoxPreview2D({ inputs, derived }) {
 
   const {
     P1, P2, P3, P4,
-    glueLap,            // NOTE: equals glueLapWidth (no + a)
+    glueLap,            // equals glueLapWidth (NO +a) – set in app/page.js
     blankWidth: bw,
     scoreToScore: bh,
     top,
@@ -43,7 +43,7 @@ export default function BoxPreview2D({ inputs, derived }) {
   const originY = padding + maxTop; // y of upper score line
 
   // ---------- helpers ----------
-  // Flap path with bevel + “a” nib ONLY on glue-lap flaps (NOT in panel width)
+  // Glue-lap flap path with bevel + “a” nib (nib extends OUTWARD to the right)
   const makeFlapPath = (x0, width, height, isTop) => {
     const { glueLapWidth, glueLapExtensionA } = inputs;
 
@@ -51,12 +51,12 @@ export default function BoxPreview2D({ inputs, derived }) {
     const dir = isTop ? -1 : +1;
     const flapY = yBase + dir * height;
 
-    const isGlueLap = width === glueLap;
+    // Detect glue-lap by x-position (more reliable than width equality)
+    const isGlueLap = x0 === (padding + xGlue);
 
     // Bevel run along X for the glue-lap flap edge (visual only)
     const bevelX = isGlueLap
-      ? Math.tan((glueLapBevelAngle * Math.PI) / 180) *
-        Math.min(height, glueLapWidth)
+      ? Math.tan((glueLapBevelAngle * Math.PI) / 180) * Math.min(height, glueLapWidth)
       : 0;
 
     // Base rectangle corners
@@ -65,18 +65,17 @@ export default function BoxPreview2D({ inputs, derived }) {
     const y1 = yBase;
     const y2 = flapY;
 
-    // Beveled far side for glue-lap only
+    // Beveled far edge
     const x2b = isGlueLap && bevelX !== 0 ? (isTop ? x2 - bevelX : x2 + bevelX) : x2;
 
-    // “a” extension (nib) belongs ONLY on glue-lap FLAPS
+    // “a” nib belongs ONLY on glue-lap FLAPS and should extend the free edge OUTWARD (to the right)
     const a = isGlueLap ? Math.max(0, glueLapExtensionA) : 0;
 
-    if (!isGlueLap || a === 0) {
+    if (a === 0) {
       return `M ${x1},${y1} L ${x2},${y1} L ${x2b},${y2} L ${x1},${y2} Z`;
     }
 
-    // With extension “a”: add a small nib beyond the beveled tip.
-    const x2e = isTop ? x2b - a : x2b + a;
+    const x2e = x2b + a; // nib tip to the right for both top & bottom
 
     return [
       `M ${x1},${y1}`,
@@ -110,11 +109,11 @@ export default function BoxPreview2D({ inputs, derived }) {
         <rect x="0" y="0" width={bw + padding * 2} height={totalH + padding * 2} fill="#fafafa" />
 
         {/* TOP FLAPS */}
-        <path d={makeFlapPath(xGlue + padding, glueLap, top.P1, true)} fill="#fff" stroke="#999" />
-        <path d={makeFlapPath(xP1 + padding, P1, top.P1, true)} fill="#fff" stroke="#999" />
-        <path d={makeFlapPath(xP2 + padding, P2, top.P2, true)} fill="#fff" stroke="#999" />
-        <path d={makeFlapPath(xP3 + padding, P3, top.P3, true)} fill="#fff" stroke="#999" />
-        <path d={makeFlapPath(xP4 + padding, P4, top.P4, true)} fill="#fff" stroke="#999" />
+        <path d={makeFlapPath(padding + xGlue, glueLap, top.P1, true)} fill="#fff" stroke="#999" />
+        <path d={makeFlapPath(padding + xP1,  P1,     top.P1, true)} fill="#fff" stroke="#999" />
+        <path d={makeFlapPath(padding + xP2,  P2,     top.P2, true)} fill="#fff" stroke="#999" />
+        <path d={makeFlapPath(padding + xP3,  P3,     top.P3, true)} fill="#fff" stroke="#999" />
+        <path d={makeFlapPath(padding + xP4,  P4,     top.P4, true)} fill="#fff" stroke="#999" />
 
         {/* MAIN BLANK (score-to-score) */}
         <rect x={padding + xGlue} y={originY} width={bw} height={bh} fill="#fff" stroke="#333" />
@@ -154,11 +153,11 @@ export default function BoxPreview2D({ inputs, derived }) {
         <line x1={padding + xGlue} y1={originY} x2={padding + xGlue} y2={originY + bh} stroke="#444" />
 
         {/* BOTTOM FLAPS */}
-        <path d={makeFlapPath(xGlue + padding, glueLap, bottom.P1, false)} fill="#fff" stroke="#999" />
-        <path d={makeFlapPath(xP1 + padding, P1, bottom.P1, false)} fill="#fff" stroke="#999" />
-        <path d={makeFlapPath(xP2 + padding, P2, bottom.P2, false)} fill="#fff" stroke="#999" />
-        <path d={makeFlapPath(xP3 + padding, P3, bottom.P3, false)} fill="#fff" stroke="#999" />
-        <path d={makeFlapPath(xP4 + padding, P4, bottom.P4, false)} fill="#fff" stroke="#999" />
+        <path d={makeFlapPath(padding + xGlue, glueLap, bottom.P1, false)} fill="#fff" stroke="#999" />
+        <path d={makeFlapPath(padding + xP1,  P1,     bottom.P1, false)} fill="#fff" stroke="#999" />
+        <path d={makeFlapPath(padding + xP2,  P2,     bottom.P2, false)} fill="#fff" stroke="#999" />
+        <path d={makeFlapPath(padding + xP3,  P3,     bottom.P3, false)} fill="#fff" stroke="#999" />
+        <path d={makeFlapPath(padding + xP4,  P4,     bottom.P4, false)} fill="#fff" stroke="#999" />
 
         {/* Panel labels */}
         {showPanelLabels && (

@@ -118,20 +118,21 @@ function computeRSC({ L, W, H, thickness, glueLap, adds, start = "W", h1 }) {
 /* =========================================================
    Component
    ========================================================= */
-export default function BoxPreview2D({
-  // inputs
-  L, W, H,
-  thickness,
-  glueSide,            // "inside" | "outside"
-  glueOff,             // "small" | "large"
-  glueLap,             // mm
-  glueExt,             // mm
-  bevelDeg,            // °
-  slotWidth,           // mm
-  // display toggles (we keep them on by default as requested)
-  showDims = true,
-  showLabels = true,
-}) {
++ export default function BoxPreview2D(props = {}) {
++   const {
++     L = 300,
++     W = 200,
++     H = 150,
++     thickness = 4,
++     glueSide = "inside",
++     glueOff = "small",
++     glueLap = 28,
++     glueExt = 14,
++     bevelDeg = 30,
++     slotWidth = 6,
++     showDims = true,
++     showLabels = true,
++   } = props;
   // container fit
   const wrapRef = useRef(null);
   const [wrapSize, setWrapSize] = useState({ w: 1200, h: 620 });

@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import BoxPreview2D from "../components/BoxPreview2D";
+import BoxPreview2D from "./components/BoxPreview2D";
 
 export default function Page() {
   // --- the 10 inputs controlled here (left column) ---

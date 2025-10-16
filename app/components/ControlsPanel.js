@@ -1,9 +1,14 @@
 // app/components/ControlsPanel.js
 "use client";
 
+import { useState } from "react";
+import StylePickerModal from "./StylePickerModal";
+
 export default function ControlsPanel({ inputs, setInputs }) {
-  const onNum = (key) => (e) => setInputs(v => ({ ...v, [key]: num(e.target.value) }));
-  const onStr = (key) => (e) => setInputs(v => ({ ...v, [key]: e.target.value }));
+  const [styleModal, setStyleModal] = useState(false);
+
+  const onNum  = (key) => (e) => setInputs(v => ({ ...v, [key]: num(e.target.value) }));
+  const onStr  = (key) => (e) => setInputs(v => ({ ...v, [key]: e.target.value }));
   const onBool = (key) => (e) => setInputs(v => ({ ...v, [key]: e.target.checked }));
 
   return (
@@ -64,21 +69,56 @@ export default function ControlsPanel({ inputs, setInputs }) {
         </Row>
       </Section>
 
-      {/* Style/Flute (placeholders now) */}
+      {/* Style/Flute (placeholders) */}
       <Section title="Style & Flute (placeholders)">
         <Row>
           <Select label="Parent style" value={inputs.parentStyle} onChange={onStr("parentStyle")}
                   options={[["0200","0200 — Slotted family"]]} />
-          <Select label="Style" value={inputs.styleCode} onChange={onStr("styleCode")}
-                  options={[["0201","0201"],["0202","0202"],["0203","0203"],["0204","0204"]]} />
+
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700">Style</span>
+              <button
+                type="button"
+                onClick={() => setStyleModal(true)}
+                className="text-xs px-2 py-1 rounded border hover:bg-gray-50 inline-flex items-center gap-1"
+                title="Show style visuals"
+              >
+                <span className="grid grid-cols-2 gap-[2px]">
+                  <span className="w-2 h-2 border" />
+                  <span className="w-2 h-2 border" />
+                  <span className="w-2 h-2 border" />
+                  <span className="w-2 h-2 border" />
+                </span>
+                Show style visuals
+              </button>
+            </div>
+            <select className="border rounded-md px-2 py-1"
+                    value={inputs.styleCode}
+                    onChange={onStr("styleCode")}>
+              {["0201","0202","0203","0204","0205","0206"].map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
           <Select label="Flute" value={inputs.fluteCode} onChange={onStr("fluteCode")}
                   options={[["B","B (3 mm)"],["C","C (4 mm)"],["E","E (2 mm)"]]} />
         </Row>
       </Section>
+
+      {/* Modal */}
+      <StylePickerModal
+        open={styleModal}
+        value={inputs.styleCode}
+        onSelect={(code) => setInputs(v => ({ ...v, styleCode: code }))}
+        onClose={() => setStyleModal(false)}
+      />
     </div>
   );
 }
 
+/* -------- UI bits -------- */
 function Section({ title, children }) {
   return (
     <div className="space-y-2">

@@ -10,29 +10,28 @@ export default function BoxPreview2D({ inputs, derived }) {
     showDimLines,
     showFlapLabels,
 
-    // glue-lap controls
-    glueLapBevelAngle,     // degrees
-    glueLapExtensionA,     // mm (vertical extension on glue flaps only)
+    glueLapBevelAngle,     // deg from horizontal
+    glueLapExtensionA,     // mm (vertical)
     glueLapWidth,          // mm
-    gluePosition,          // "inside" | "outside" (visual bevel orientation)
+    gluePosition,          // "inside" | "outside" (visual only)
   } = inputs;
 
   const {
     P1, P2, P3, P4,
-    glueLap,               // == glueLapWidth (no +a)
+    glueLap,               // == glueLapWidth (NO +a)
     blankWidth: bw,
     scoreToScore: bh,
     top, bottom,
   } = derived;
 
-  // ───────────────── layout in mm ─────────────────
+  // ── layout (mm) ─────────────────────────────────────────────────────────────
   const pad = 24;
   const xGlue = 0;
-  const xP1   = xGlue + glueLap;
-  const xP2   = xP1 + P1;
-  const xP3   = xP2 + P2;
-  const xP4   = xP3 + P3;
-  const xEnd  = xP4 + P4;
+  const xP1 = xGlue + glueLap;
+  const xP2 = xP1 + P1;
+  const xP3 = xP2 + P2;
+  const xP4 = xP3 + P3;
+  const xEnd = xP4 + P4;
   const vScores = [xP1, xP2, xP3, xP4, xEnd];
 
   const maxTop = Math.max(top.P1, top.P2, top.P3, top.P4);
@@ -43,31 +42,37 @@ export default function BoxPreview2D({ inputs, derived }) {
     () => `0 0 ${bw + pad * 2} ${totalH + pad * 2}`,
     [bw, totalH]
   );
-  const yScoreTop = pad + maxTop;     // upper score line Y
+  const yScoreTop = pad + maxTop;
 
-  // ───────────────── helpers ─────────────────
-
-  // Draw any flap. For glue-lap we apply bevel and add vertical extension "a".
+  // ── helpers ─────────────────────────────────────────────────────────────────
+  // Robust glue-lap flap: vertical extension "a" and a *clamped* bevel on free edge
   const flapPath = (x0, w, h, isTop, isGlueLapCol) => {
     const yBase = isTop ? yScoreTop : yScoreTop + bh;
-    const dir   = isTop ? -1 : +1;                    // up for top, down for bottom
+    const dir = isTop ? -1 : +1; // up or down
 
-    const a     = isGlueLapCol ? Math.max(0, glueLapExtensionA) : 0;
-    const tipY  = yBase + dir * (h + a);              // vertical extension
+    // vertical extension only for glue-lap flaps
+    const a = isGlueLapCol ? Math.max(0, glueLapExtensionA) : 0;
+    const tipY = yBase + dir * (h + a);
 
-    // Bevel on the free edge for glue-lap only.
-    // “inside” glue bevel leans INTO the body; “outside” flips it.
-    const bevelSign = (gluePosition === "outside") ? -1 : 1;
-    const bevelRun  = isGlueLapCol
-      ? bevelSign * Math.tan((glueLapBevelAngle * Math.PI) / 180) * Math.min(h + a, glueLapWidth)
-      : 0;
+    // bevel: distance the free edge moves along X from base to tip
+    let run = 0;
+    if (isGlueLapCol && glueLapBevelAngle) {
+      const rad = (glueLapBevelAngle * Math.PI) / 180;
+      run = Math.tan(rad) * (h + a);
+      // don’t let the bevel run exceed the physical flap width
+      run = Math.min(Math.max(run, 0), w - 1);
+      // “outside” glue flips the orientation vs “inside”
+      if (gluePosition === "outside") run = -run;
+      // top flap bevel leans the opposite way to bottom for a consistent visual
+      if (isTop) run = -run;
+    }
 
     const x1 = x0;
     const x2 = x0 + w;
-    const xFree = isGlueLapCol ? x2 + (isTop ? -bevelRun : bevelRun) : x2;
+    const xFreeTip = x2 + run; // free edge at the tip after bevel; base stays at x2
 
-    // poly: base edge -> free/beveled edge -> tip -> back
-    return `M ${x1},${yBase} L ${x2},${yBase} L ${xFree},${tipY} L ${x1},${tipY} Z`;
+    // polygon: base edge → free edge (beveled) → tip → back
+    return `M ${x1},${yBase} L ${x2},${yBase} L ${xFreeTip},${tipY} L ${x1},${tipY} Z`;
   };
 
   const DimLine = ({ x1, y1, x2, y2, label, offset = 10 }) => {
@@ -84,11 +89,10 @@ export default function BoxPreview2D({ inputs, derived }) {
     );
   };
 
-  // Slot notches: visible rectangles centered on each score.
-  // Width = slotWidth (X), depth = d (Y into flap). Drawn LAST so they’re above flaps.
+  // slot notches: rectangles centered on each score, drawn last so they’re visible
   const SlotNotches = () => {
     if (!(slotWidth > 0)) return null;
-    const d = 16;                         // depth into each flap for visibility
+    const depth = 16; // show 16 mm into the flaps for clarity
     const half = slotWidth / 2;
 
     return (
@@ -97,26 +101,10 @@ export default function BoxPreview2D({ inputs, derived }) {
           const sx = pad + x;
           return (
             <g key={`notch-${i}`}>
-              {/* top notch */}
-              <rect
-                x={sx - half}
-                y={yScoreTop - d}
-                width={slotWidth}
-                height={d}
-                fill="#fff"
-                stroke="#222"
-                strokeWidth="1.2"
-              />
-              {/* bottom notch */}
-              <rect
-                x={sx - half}
-                y={yScoreTop + bh}
-                width={slotWidth}
-                height={d}
-                fill="#fff"
-                stroke="#222"
-                strokeWidth="1.2"
-              />
+              <rect x={sx - half} y={yScoreTop - depth} width={slotWidth} height={depth}
+                    fill="#fff" stroke="#222" strokeWidth="1.2" />
+              <rect x={sx - half} y={yScoreTop + bh} width={slotWidth} height={depth}
+                    fill="#fff" stroke="#222" strokeWidth="1.2" />
             </g>
           );
         })}
@@ -124,7 +112,7 @@ export default function BoxPreview2D({ inputs, derived }) {
     );
   };
 
-  // ───────────────── render ─────────────────
+  // ── render ──────────────────────────────────────────────────────────────────
   return (
     <div className="w-full overflow-auto border rounded-xl p-2 bg-white">
       <svg viewBox={viewBox} className="w-full h-[520px]" role="img" aria-label="2D RSC Blank">
@@ -134,8 +122,8 @@ export default function BoxPreview2D({ inputs, derived }) {
         {/* main blank */}
         <rect x={pad + xGlue} y={yScoreTop} width={bw} height={bh} fill="#fff" stroke="#333" strokeWidth="1" />
 
-        {/* RED crease lines (S2S) */}
-        <line x1={pad + xGlue} y1={yScoreTop}     x2={pad + xEnd} y2={yScoreTop}     stroke="#c62828" strokeWidth="1" />
+        {/* red crease lines */}
+        <line x1={pad + xGlue} y1={yScoreTop} x2={pad + xEnd} y2={yScoreTop} stroke="#c62828" strokeWidth="1" />
         <line x1={pad + xGlue} y1={yScoreTop + bh} x2={pad + xEnd} y2={yScoreTop + bh} stroke="#c62828" strokeWidth="1" />
 
         {/* TOP flaps */}
@@ -152,10 +140,10 @@ export default function BoxPreview2D({ inputs, derived }) {
         <path d={flapPath(pad + xP3,   P3,      bottom.P3, false, false)} fill="#fff" stroke="#666" strokeWidth="1" />
         <path d={flapPath(pad + xP4,   P4,      bottom.P4, false, false)} fill="#fff" stroke="#666" strokeWidth="1" />
 
-        {/* vertical score lines */}
+        {/* vertical scores */}
         {vScores.map((x, i) => (
           <line
-            key={`s-${i}`}
+            key={`score-${i}`}
             x1={pad + x}
             y1={yScoreTop}
             x2={pad + x}
@@ -166,21 +154,20 @@ export default function BoxPreview2D({ inputs, derived }) {
           />
         ))}
 
-        {/* SLOT NOTCHES drawn last (so they sit on top) */}
+        {/* slots on top */}
         <SlotNotches />
 
-        {/* Labels */}
+        {/* labels */}
         {showPanelLabels && (
           <>
             <text x={pad + xP1 + P1 / 2} y={yScoreTop + bh / 2} textAnchor="middle" fontSize="13">P1 (L)</text>
             <text x={pad + xP2 + P2 / 2} y={yScoreTop + bh / 2} textAnchor="middle" fontSize="13">P2 (W)</text>
             <text x={pad + xP3 + P3 / 2} y={yScoreTop + bh / 2} textAnchor="middle" fontSize="13">P3 (L)</text>
             <text x={pad + xP4 + P4 / 2} y={yScoreTop + bh / 2} textAnchor="middle" fontSize="13">P4 (W)</text>
-            <text x={pad + glueLap / 2}   y={yScoreTop + bh / 2} textAnchor="middle" fontSize="13">Glue-lap</text>
+            <text x={pad + glueLap / 2} y={yScoreTop + bh / 2} textAnchor="middle" fontSize="13">Glue-lap</text>
           </>
         )}
 
-        {/* Flap labels (short) */}
         {showFlapLabels && (
           <>
             <text x={pad + xP2 + P2 / 2} y={yScoreTop - top.P2 - 6} textAnchor="middle" fontSize="11">
@@ -192,7 +179,7 @@ export default function BoxPreview2D({ inputs, derived }) {
           </>
         )}
 
-        {/* Green dimension lines */}
+        {/* green dimension lines */}
         {showDimLines && (
           <>
             <DimLine x1={pad + xGlue} y1={pad + totalH} x2={pad + xEnd} y2={pad + totalH} label={bw} offset={12} />

@@ -1,7 +1,7 @@
 // app/page.js
 "use client";
 import React from "react";
-import Workbench from "../components/Workbench";
+import Workbench from "./components/Workbench";
 
 // ---- Plug YOUR components here ----
 const InputPanel = () => {

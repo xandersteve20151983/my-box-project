@@ -1,12 +1,12 @@
-// components/Workbench.js
+// app/components/Workbench.js
 "use client";
 import React, { useMemo, useState, useCallback } from "react";
 
 /**
  * Props:
- * - InputPanel:   React component containing your whole left-side inputs.
+ * - InputPanel:   React component for the left column (your inputs).
  * - outputs:      Array of { id, title, Component } available on the right.
- * - initialActiveIds: string[] of outputs that should start in the middle grid (e.g. ["2d"])
+ * - initialActiveIds: string[] of outputs that should start in the middle grid.
  * - AdminBar:     Optional React component rendered at top-right.
  */
 export default function Workbench({ InputPanel, outputs, initialActiveIds = [], AdminBar }) {
@@ -42,7 +42,6 @@ export default function Workbench({ InputPanel, outputs, initialActiveIds = [], 
 
   const removeFromGrid = (id) => setActiveIds(prev => prev.filter(x => x !== id));
 
-  // Simple responsive grid logic
   const gridCols =
     activeIds.length <= 1 ? "grid-cols-1"
     : activeIds.length === 2 ? "grid-cols-2"
@@ -73,7 +72,7 @@ export default function Workbench({ InputPanel, outputs, initialActiveIds = [], 
           onDrop={onDrop}
           onDragOver={onDragOver}
         >
-          <div className={`p-4 grid gap-4 ${gridCols} auto-rows-[minmax(320px,auto)]`}>
+          <div className={`p-4 grid gap-4 ${gridCols} auto-rows-[minmax(360px,auto)]`}>
             {activeIds.length === 0 && (
               <div className="col-span-full rounded-lg border-2 border-dashed p-10 text-center text-neutral-500">
                 Drag outputs from the right to place them here
@@ -96,7 +95,8 @@ export default function Workbench({ InputPanel, outputs, initialActiveIds = [], 
                       ✕
                     </button>
                   </header>
-                  <div className="p-3 h-full">
+                  {/* IMPORTANT: min-h so tiles don’t collapse */}
+                  <div className="p-3 min-h-[520px]">
                     <Comp />
                   </div>
                 </section>

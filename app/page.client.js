@@ -1,32 +1,41 @@
-// Replace your ErrorBoundary in app/page.client.js with this:
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, err: null };
-  }
-  static getDerivedStateFromError(err) {
-    return { hasError: true, err };
-  }
-  componentDidCatch(err) {
-    console.error("Output panel crashed:", err);
-  }
-  render() {
-    if (this.state.hasError) {
-      const msg = this.state.err?.message || String(this.state.err || "");
-      const stack = this.state.err?.stack || "";
-      return (
-        <div className="h-full w-full p-4 text-sm">
-          <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-900">
-            <div className="font-medium mb-1">This panel failed to load.</div>
-            <div className="opacity-80 mb-2">{msg}</div>
-            <details className="opacity-70">
-              <summary>Stack</summary>
-              <pre className="whitespace-pre-wrap text-xs mt-1">{stack}</pre>
-            </details>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
+// app/page.client.js
+"use client";
+import React from "react";
+import Workbench from "./components/Workbench";
+import ControlsPanel from "./components/ControlsPanel";
+import BoxPreview2D from "./components/BoxPreview2D";
+
+export default function PageClient() {
+  const InputPanel = () => <div className="space-y-4"><ControlsPanel /></div>;
+  const Output2DBlank = () => <div className="h-full w-full"><BoxPreview2D /></div>;
+
+  const ManufacturingDrawing = () => <div className="h-full w-full">Manufacturing drawing goes here.</div>;
+  const FoldedFlat            = () => <div className="h-full w-full">Folded flat preview goes here.</div>;
+  const Folded3D              = () => <div className="h-full w-full">3D folded viewer goes here.</div>;
+  const Palletisation         = () => <div className="h-full w-full">Palletisation view goes here.</div>;
+  const TruckUtilisation      = () => <div className="h-full w-full">Truck utilisation view goes here.</div>;
+
+  const AdminBar = () => (
+    <div className="flex gap-2 rounded-lg border bg-white/95 px-3 py-2 shadow">
+      <button className="rounded border px-2 py-1 text-sm hover:bg-neutral-100">Admin</button>
+    </div>
+  );
+
+  const outputs = [
+    { id: "2d",  title: "2D Blank Drawing",                 Component: Output2DBlank },
+    { id: "mfg", title: "Manufacturing Drawing",            Component: ManufacturingDrawing },
+    { id: "ff",  title: "Folded Flat",                      Component: FoldedFlat },
+    { id: "f3d", title: "3D Folded",                        Component: Folded3D },
+    { id: "pal", title: "Palletisation – Supplied Product", Component: Palletisation },
+    { id: "trk", title: "Truck Utilisation – Supplied",     Component: TruckUtilisation },
+  ];
+
+  return (
+    <Workbench
+      InputPanel={InputPanel}
+      outputs={outputs}
+      initialActiveIds={["2d"]}
+      AdminBar={AdminBar}
+    />
+  );
 }
